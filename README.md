@@ -18,9 +18,8 @@ By the end of this tutorial, you will:
 │   ├── init.sql           # Database initialization script
 │   └── package.json       # Node.js dependencies
 ├── frontend/
-│   ├── src/               # React application (Vite)
-│   ├── public/            # Static files
-│   └── package.json       # React dependencies
+│   └── public/
+│       └── index.html     # Simple HTML/CSS/JS frontend
 └── README.md             # This file
 ```
 
@@ -72,31 +71,20 @@ CMD ["npm", "start"]
 Create a file named `Dockerfile` in the `frontend/` directory:
 
 ```dockerfile
-FROM node:18-alpine
+FROM nginx:alpine
 
-WORKDIR /app
+COPY public /usr/share/nginx/html
 
-COPY package*.json ./
+EXPOSE 80
 
-RUN npm install
-
-COPY . .
-
-EXPOSE 3000
-
-CMD ["npm", "run", "dev", "--", "--host"]
+CMD ["nginx", "-g", "daemon off;"]
 ```
 
 **Explanation:**
-- Simple single-stage build (no nginx needed!)
-- Uses Vite dev server
-- `--host` flag makes it accessible from outside container
-- Exposes port 3000 for Vite dev server
-
-**Why so simple?**
-- Vite is blazing fast and simple
-- No need for multi-stage builds for learning
-- Easier to understand and debug
+- Uses nginx to serve static HTML files
+- Super simple and fast
+- No build process needed
+- Perfect for learning Docker basics
 
 ---
 
@@ -107,15 +95,6 @@ Create `.dockerignore` in `backend/`:
 ```
 node_modules
 npm-debug.log
-.DS_Store
-```
-
-Create `.dockerignore` in `frontend/`:
-
-```
-node_modules
-npm-debug.log
-dist
 .DS_Store
 ```
 
@@ -163,7 +142,7 @@ services:
       DB_PASSWORD: postgres
       PORT: 5000
     ports:
-      - "5000:5000"
+      - "5001:5000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -173,9 +152,7 @@ services:
     build: ./frontend
     container_name: todo-frontend
     ports:
-      - "3000:3000"
-    environment:
-      VITE_API_URL: http://localhost:5000/api
+      - "3000:80"
     depends_on:
       - backend
     restart: on-failure
@@ -201,9 +178,9 @@ volumes:
 
 **Frontend Service:**
 - Built from `./frontend` Dockerfile
-- Uses Vite dev server
-- Exposes port 3000
-- Environment variable for API URL
+- Simple HTML/CSS/JS frontend
+- Served by nginx on port 80
+- Exposes port 3000 (mapped to container's port 80)
 - Depends on backend service
 
 **Volumes:**
@@ -229,7 +206,7 @@ docker-compose up --build
 ### Access the Application:
 
 - **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:5000
+- **Backend API**: http://localhost:5001
 - **Database**: localhost:5432 (postgres/postgres)
 
 ### Useful Commands:

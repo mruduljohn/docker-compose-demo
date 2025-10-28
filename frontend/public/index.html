@@ -1,14 +1,367 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Todo App with Docker and Docker Compose" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Todo App - Docker Demo</title>
-  </head>
-  <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
-    <script type="module" src="/src/index.js"></script>
-  </body>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1rem;
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            display: none;
+        }
+
+        .todo-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+
+        .input {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-primary {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 18px;
+            display: none;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            font-size: 16px;
+            display: none;
+        }
+
+        .todos {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .todo-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+        }
+
+        .todo-card.completed {
+            background: #f0f9ff;
+            border-color: #93c5fd;
+        }
+
+        .todo-content {
+            flex: 1;
+        }
+
+        .todo-title {
+            font-size: 1.2rem;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .completed .todo-title {
+            text-decoration: line-through;
+            color: #999;
+        }
+
+        .todo-description {
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .todo-date {
+            color: #999;
+            font-size: 0.85rem;
+        }
+
+        .todo-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .btn-complete {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-undo {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-delete {
+            background: #ef4444;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            .todo-card {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .todo-actions {
+                margin-top: 15px;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🐳 Docker Todo App</h1>
+            <p>Powered by Docker & Docker Compose</p>
+        </header>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <form class="todo-form" id="todoForm">
+            <input type="text" class="input" id="titleInput" placeholder="Enter todo title..." required>
+            <input type="text" class="input" id="descriptionInput" placeholder="Enter description (optional)...">
+            <button type="submit" class="btn-primary">Add Todo</button>
+        </form>
+
+        <div class="loading" id="loading">Loading todos...</div>
+        <div class="empty-state" id="emptyState">No todos yet. Create one above!</div>
+        <div class="todos" id="todos"></div>
+    </div>
+
+    <script>
+        const API_URL = window.location.hostname === 'localhost' 
+            ? 'http://localhost:5001/api' 
+            : 'http://todo-backend:5000/api';
+
+        let todos = [];
+        let loading = false;
+
+        document.getElementById('todoForm').addEventListener('submit', createTodo);
+        document.addEventListener('DOMContentLoaded', fetchTodos);
+
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.textContent = '⚠️ ' + message;
+            errorEl.style.display = 'block';
+            setTimeout(() => {
+                errorEl.style.display = 'none';
+            }, 5000);
+        }
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('emptyState').style.display = 'none';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+            if (todos.length === 0) {
+                document.getElementById('emptyState').style.display = 'block';
+            }
+        }
+
+        async function fetchTodos() {
+            try {
+                showLoading();
+                const response = await fetch(`${API_URL}/todos`);
+                if (!response.ok) throw new Error('Failed to fetch todos');
+                todos = await response.json();
+                renderTodos();
+            } catch (err) {
+                showError(err.message);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function createTodo(e) {
+            e.preventDefault();
+            const title = document.getElementById('titleInput').value.trim();
+            const description = document.getElementById('descriptionInput').value.trim();
+
+            if (!title) {
+                showError('Title is required');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/todos`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, description })
+                });
+
+                if (!response.ok) throw new Error('Failed to create todo');
+                
+                const data = await response.json();
+                todos.unshift(data);
+                renderTodos();
+                document.getElementById('todoForm').reset();
+            } catch (err) {
+                showError(err.message);
+            }
+        }
+
+        window.toggleTodoHandler = async function(id, completed) {
+            try {
+                const response = await fetch(`${API_URL}/todos/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ completed: !completed })
+                });
+
+                if (!response.ok) throw new Error('Failed to update todo');
+                
+                const data = await response.json();
+                const index = todos.findIndex(t => t.id === id);
+                todos[index] = data;
+                renderTodos();
+            } catch (err) {
+                showError(err.message);
+            }
+        };
+
+        window.deleteTodoHandler = async function(id) {
+            try {
+                const response = await fetch(`${API_URL}/todos/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) throw new Error('Failed to delete todo');
+                
+                todos = todos.filter(t => t.id !== id);
+                renderTodos();
+            } catch (err) {
+                showError(err.message);
+            }
+        };
+
+        function renderTodos() {
+            const container = document.getElementById('todos');
+            container.innerHTML = '';
+
+            todos.forEach(todo => {
+                const card = document.createElement('div');
+                card.className = `todo-card ${todo.completed ? 'completed' : ''}`;
+                card.innerHTML = `
+                    <div class="todo-content">
+                        <h3 class="todo-title">${escapeHtml(todo.title)}</h3>
+                        ${todo.description ? `<p class="todo-description">${escapeHtml(todo.description)}</p>` : ''}
+                        <small class="todo-date">Created: ${new Date(todo.created_at).toLocaleString()}</small>
+                    </div>
+                    <div class="todo-actions">
+                        <button class="btn ${todo.completed ? 'btn-undo' : 'btn-complete'}" onclick="window.toggleTodoHandler(${todo.id}, ${todo.completed})">
+                            ${todo.completed ? '✓ Undo' : '✓ Complete'}
+                        </button>
+                        <button class="btn btn-delete" onclick="window.deleteTodoHandler(${todo.id})">🗑️ Delete</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            hideLoading();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
 </html>

@@ -31,25 +31,19 @@ CMD ["npm", "start"]
 Create `frontend/Dockerfile`:
 
 ```dockerfile
-FROM node:18-alpine
+FROM nginx:alpine
 
-WORKDIR /app
+COPY public /usr/share/nginx/html
 
-COPY package*.json ./
+EXPOSE 80
 
-RUN npm install
-
-COPY . .
-
-EXPOSE 3000
-
-CMD ["npm", "run", "dev", "--", "--host"]
+CMD ["nginx", "-g", "daemon off;"]
 ```
 
 **Explanation:**
-- Much simpler than nginx setup!
-- Vite dev server runs in the container
-- `--host` flag makes it accessible from outside the container
+- Uses nginx to serve static HTML
+- No build process needed
+- Super simple and beginner-friendly
 
 ---
 
@@ -67,15 +61,7 @@ npm-debug.log
 
 ## 4. Frontend .dockerignore
 
-Create `frontend/.dockerignore`:
-
-```
-node_modules
-npm-debug.log
-dist
-.DS_Store
-.vscode
-```
+No need for a .dockerignore for frontend (it's just static HTML now).
 
 ---
 
@@ -116,7 +102,7 @@ services:
       DB_PASSWORD: postgres
       PORT: 5000
     ports:
-      - "5000:5000"
+      - "5001:5000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -126,9 +112,7 @@ services:
     build: ./frontend
     container_name: todo-frontend
     ports:
-      - "3000:3000"
-    environment:
-      VITE_API_URL: http://localhost:5000/api
+      - "3000:80"
     depends_on:
       - backend
     restart: on-failure
@@ -147,7 +131,7 @@ docker-compose up --build
 
 **Access:**
 - Frontend: http://localhost:3000
-- Backend: http://localhost:5000
+- Backend: http://localhost:5001
 - Database: localhost:5432
 
 **Stop:**
@@ -162,9 +146,9 @@ docker-compose down -v
 
 ---
 
-## Key Differences from Complex Setup
+## Key Features
 
-✅ **No nginx configuration needed**
-✅ **No multi-stage Dockerfile**  
-✅ **Simple Vite dev server**
-✅ **Easier to understand and teach**
+✅ **No npm build process needed**
+✅ **Simple single-stage Dockerfile**  
+✅ **Plain HTML/CSS/JavaScript**
+✅ **Super fast and easy to understand**
